@@ -1,0 +1,270 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --surface: 248 250 252;
+    --card: 255 255 255;
+    --elevated: 241 245 249;
+    --line: 226 232 240;
+    --content: 17 17 17;
+    --muted: 71 85 105;
+    --faint: 148 163 184;
+    --brand: 225 29 46;
+    --brand-deep: 153 27 27;
+    --brand-bright: 239 68 68;
+    --brand-soft: 254 226 226;
+    color-scheme: light;
+  }
+
+  .dark {
+    --surface: 9 9 9;
+    --card: 24 24 27;
+    --elevated: 39 39 42;
+    --line: 47 47 52;
+    --content: 248 250 252;
+    --muted: 161 161 170;
+    --faint: 113 113 122;
+    --brand: 239 68 68;
+    --brand-deep: 153 27 27;
+    --brand-bright: 248 113 113;
+    --brand-soft: 69 10 10;
+    color-scheme: dark;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 90px;
+  }
+
+  body {
+    @apply bg-surface font-sans text-content antialiased;
+    overflow-x: hidden;
+  }
+
+  body,
+  header,
+  footer,
+  aside,
+  .card,
+  .panel,
+  .field,
+  .btn-ghost {
+    transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-heading {
+    @apply font-display;
+  }
+
+  ::selection {
+    background: rgb(var(--brand) / 0.25);
+    color: rgb(var(--content));
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--elevated));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgb(var(--brand)), rgb(var(--brand-deep)));
+    border-radius: 999px;
+    border: 2px solid rgb(var(--elevated));
+  }
+
+  /* Light-mode compatibility for legacy white/opacity utilities */
+  :root:not(.dark) .border-white\/10,
+  :root:not(.dark) .border-white\/15,
+  :root:not(.dark) .border-white\/5,
+  :root:not(.dark) .border-white\/20 {
+    border-color: rgb(var(--line));
+  }
+
+  :root:not(.dark) .bg-white\/5,
+  :root:not(.dark) .bg-white\/10,
+  :root:not(.dark) .bg-white\/\[0\.02\],
+  :root:not(.dark) .bg-white\/\[0\.03\] {
+    background-color: rgb(var(--elevated));
+  }
+
+  :root:not(.dark) .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgb(var(--line));
+  }
+
+  :root:not(.dark) .bg-ink\/70,
+  :root:not(.dark) .bg-ink\/60,
+  :root:not(.dark) .bg-ink\/50,
+  :root:not(.dark) .bg-ink\/85,
+  :root:not(.dark) .bg-ink\/95,
+  :root:not(.dark) .bg-ink\/97,
+  :root:not(.dark) .bg-navy\/60,
+  :root:not(.dark) .bg-navy\/70,
+  :root:not(.dark) .bg-navy\/95 {
+    background-color: rgb(var(--card));
+  }
+}
+
+@layer components {
+  .container-x {
+    @apply mx-auto w-full max-w-7xl px-5 sm:px-8;
+  }
+
+  .section-pad {
+    @apply py-20 sm:py-28;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.32em] text-brand;
+  }
+
+  .blueprint {
+    @apply bg-grid-brand bg-grid;
+  }
+
+  .heading-xl {
+    @apply font-display text-4xl font-bold leading-[1.05] tracking-tight text-content sm:text-5xl lg:text-6xl;
+  }
+
+  .heading-lg {
+    @apply font-display text-3xl font-bold leading-tight tracking-tight text-content sm:text-4xl;
+  }
+
+  .heading-md {
+    @apply font-display text-2xl font-semibold tracking-tight text-content sm:text-3xl;
+  }
+
+  .muted {
+    @apply text-muted;
+  }
+
+  .card {
+    @apply rounded-2xl border border-line bg-card;
+  }
+
+  .card-hover {
+    @apply transition duration-300 hover:-translate-y-1 hover:border-brand/50 hover:shadow-glow;
+  }
+
+  .panel {
+    @apply rounded-2xl border border-line bg-card p-5 shadow-card sm:p-6;
+  }
+
+  .divider {
+    @apply h-px w-full bg-gradient-to-r from-transparent via-line to-transparent;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand text-white shadow-glow hover:bg-brand-deep active:scale-[.98];
+  }
+
+  .btn-cyan {
+    @apply btn bg-brand-bright text-white hover:brightness-110 active:scale-[.98];
+  }
+
+  .btn-flame {
+    @apply btn bg-brand-deep text-white hover:brightness-110 active:scale-[.98];
+  }
+
+  .btn-ghost {
+    @apply btn border border-line bg-elevated text-content hover:border-brand/60 hover:text-brand;
+  }
+
+  .btn-outline-light {
+    @apply btn border border-line bg-card text-content hover:border-brand hover:text-brand;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700 active:scale-[.98];
+  }
+
+  .btn-sm {
+    @apply px-3.5 py-2 text-xs;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-content placeholder:text-faint transition focus:border-brand/70 focus:outline-none focus:ring-2 focus:ring-brand/20;
+  }
+
+  .field-light {
+    @apply field;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[11px] font-medium uppercase tracking-wider;
+  }
+
+  .chip-ok {
+    @apply chip border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400;
+  }
+
+  .chip-warn {
+    @apply chip border-brand/40 bg-brand/10 text-brand;
+  }
+
+  .chip-info {
+    @apply chip border-brand/40 bg-brand/10 text-brand;
+  }
+
+  .chip-muted {
+    @apply chip border-line bg-elevated text-muted;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg bg-elevated;
+  }
+
+  .skeleton::after {
+    @apply absolute inset-0 animate-shimmer;
+    content: '';
+    background: linear-gradient(90deg, transparent, rgb(var(--content) / 0.06), transparent);
+  }
+
+  .skeleton-light {
+    @apply skeleton;
+  }
+
+  .link-muted {
+    @apply text-muted transition hover:text-brand;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .clip-corner {
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  }
+}
