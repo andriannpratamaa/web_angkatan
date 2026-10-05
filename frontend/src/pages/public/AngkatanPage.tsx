@@ -18,12 +18,30 @@ export default function AngkatanPage() {
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return members.filter((member) => {
+    let list = members.filter((member) => {
       const matchesClass = classId === 'all' || member.class_id === classId
       const matchesSearch =
         !query || member.name.toLowerCase().includes(query) || member.nrp.toLowerCase().includes(query)
       return matchesClass && matchesSearch
     })
+    const devIndex = list.findIndex(
+      (member) => member.nrp === '0926040059' || member.name === 'Oktavian Andrian Pratama',
+    )
+    if (devIndex > 0) {
+      const [dev] = list.splice(devIndex, 1)
+      list.unshift(dev)
+    } else if (devIndex === 0) {
+      // already first
+    } else {
+      // maybe not in filtered list (search context) - try to ensure if search not filtering dev
+      const devInAll = members.find(
+        (member) => member.nrp === '0926040059' || member.name === 'Oktavian Andrian Pratama',
+      )
+      if (devInAll && list.every((m) => m.id !== devInAll.id)) {
+        list.unshift(devInAll)
+      }
+    }
+    return list
   }, [members, classId, search])
 
   return (
@@ -73,11 +91,29 @@ export default function AngkatanPage() {
             <p className="py-20 text-center text-muted">Tidak ada mahasiswa yang cocok dengan pencarian.</p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {filtered.map((member, index) => (
-                <Reveal key={member.id} delay={Math.min(index, 8) * 0.04}>
-                  <MemberCard member={member} to={`/angkatan/${member.slug}`} />
-                </Reveal>
-              ))}
+              {filtered.map((member, index) => {
+                const isDev = member.nrp === '0926040059' || member.name === 'Oktavian Andrian Pratama'
+                if (isDev) {
+                  return (
+                    <Reveal key={member.id} delay={Math.min(index, 8) * 0.04}>
+                      <div className="relative transform-gpu transition-transform hover:scale-[1.02]">
+                        <div className="absolute -inset-[2px] z-0 rounded-2xl bg-gradient-to-br from-yellow-400 via-brand to-pink-500 opacity-90 blur-md animate-pulse" />
+                        <div className="absolute left-4 top-4 z-20 rounded-full bg-gradient-to-r from-yellow-400 to-brand px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-white shadow-2xl ring-2 ring-white/30">
+                          • DEVELOPMENT •
+                        </div>
+                        <div className="relative z-10">
+                          <MemberCard member={member} to={`/angkatan/${member.slug}`} />
+                        </div>
+                      </div>
+                    </Reveal>
+                  )
+                }
+                return (
+                  <Reveal key={member.id} delay={Math.min(index, 8) * 0.04}>
+                    <MemberCard member={member} to={`/angkatan/${member.slug}`} />
+                  </Reveal>
+                )
+              })}
             </div>
           )}
         </div>

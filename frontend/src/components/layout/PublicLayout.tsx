@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { LogIn, Menu, X } from 'lucide-react'
+import { LogIn, Menu, User, X } from 'lucide-react'
 import { Logo } from '../common/Logo'
 import { ThemeToggle } from '../common/ThemeToggle'
 import { GithubIcon, InstagramIcon, LinkedinIcon } from '../common/SocialIcons'
+import { useStudentAuth } from '../../contexts/StudentAuthContext'
 import { cn } from '../../lib/format'
 
 const navItems = [
@@ -22,6 +23,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
   const [scrolled, setScrolled] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
+  const { member } = useStudentAuth()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -78,10 +80,17 @@ export function PublicLayout({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Link to="/admin" className="btn-primary btn-sm hidden sm:inline-flex">
-              <LogIn className="h-4 w-4" />
-              Admin
-            </Link>
+            {member ? (
+              <Link to="/akun" className="btn-ghost btn-sm hidden sm:inline-flex">
+                <User className="h-4 w-4" />
+                Akun
+              </Link>
+            ) : (
+              <Link to="/masuk" className="btn-ghost btn-sm hidden sm:inline-flex">
+                <LogIn className="h-4 w-4" />
+                Masuk
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => setOpen((value) => !value)}
@@ -113,9 +122,12 @@ export function PublicLayout({ children }: { children: ReactNode }) {
                   {item.label}
                 </button>
               ))}
-              <Link to="/admin" className="btn-primary mt-2">
-                <LogIn className="h-4 w-4" />
-                Admin Panel
+              <Link
+                to={member ? '/akun' : '/masuk'}
+                className="btn-ghost mt-2"
+              >
+                <User className="h-4 w-4" />
+                {member ? 'Akun Saya' : 'Masuk'}
               </Link>
             </nav>
           </motion.div>

@@ -7,9 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\HasApiTokens;
 
 class Member extends Model
 {
+    use HasApiTokens;
     use HasFactory;
 
     protected $fillable = [
@@ -17,6 +19,10 @@ class Member extends Model
         'name',
         'slug',
         'nrp',
+        'email',
+        'password',
+        'must_change_password',
+        'last_login_at',
         'gender',
         'role',
         'photo',
@@ -29,8 +35,15 @@ class Member extends Model
         'is_active',
     ];
 
+    protected $hidden = [
+        'password',
+    ];
+
     protected $casts = [
         'is_active' => 'boolean',
+        'must_change_password' => 'boolean',
+        'last_login_at' => 'datetime',
+        'password' => 'hashed',
     ];
 
     public function studentClass(): BelongsTo

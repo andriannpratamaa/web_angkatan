@@ -1,4 +1,5 @@
 import { CalendarDays, Clock3, MapPin } from 'lucide-react'
+import { useState } from 'react'
 import { useApi } from '../../hooks/useApi'
 import type { Activity, TimelineItem } from '../../lib/types'
 import { formatDate } from '../../lib/format'
@@ -16,7 +17,7 @@ export function TimelineSection() {
       <div className="container-x">
         <SectionHeading
           eyebrow="Timeline Angkatan"
-          title="Perjalanan TO26 dari waktu ke waktu"
+          title="Perjalanan TO26"
           align="center"
         />
 

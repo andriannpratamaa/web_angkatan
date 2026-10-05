@@ -188,4 +188,74 @@ class CashService
 
         return $summary;
     }
+
+    /**
+     * Tagihan kas untuk satu mahasiswa (dipakai portal mahasiswa).
+     */
+    public function memberPeriods(Member $member, ?int $perPage = 5, ?int $page = 1): array
+    {
+        $query = CashPeriod::query()
+            ->orderBy('year')
+            ->orderBy('month');
+
+        $paginated = $query->paginate($perPage, ['*'], 'page', $page);
+
+        $payments = CashPayment::query()
+            ->where('member_id', $member->id)
+            ->whereIn('cash_period_id', $paginated->pluck('id'))
+            ->get()
+            ->keyBy('cash_period_id');
+
+        $rows = $paginated->map(function (CashPeriod $period) use ($payments) {
+            $payment = $payments[$period->id] ?? null;
+            $paid = $payment && $payment->status === CashPayment::STATUS_PAID;
+
+            return [
+                'id' => $period->id,
+                'name' => $period->name,
+                'month' => $period->month,
+                'year' => $period->year,
+                'amount' => (int) $period->amount,
+                'due_date' => $period->due_date,
+                'status' => $paid ? 'paid' : 'unpaid',
+                'status_label' => $paid ? 'Lunas' : 'Belum Bayar',
+                'payment_date' => $paid ? $payment->payment_date : null,
+                'payment_method' => $payment?->payment_method,
+            ];
+        })->values();
+
+        // Totals still computed across all periods for accuracy
+        $allPeriods = CashPeriod::query()
+            ->orderBy('year')
+            ->orderBy('month')
+            ->get();
+        $allPayments = CashPayment::query()
+            ->where('member_id', $member->id)
+            ->get()
+            ->keyBy('cash_period_id');
+        $allRows = $allPeriods->map(function (CashPeriod $period) use ($allPayments) {
+            $payment = $allPayments[$period->id] ?? null;
+            $paid = $payment && $payment->status === CashPayment::STATUS_PAID;
+            return ['amount' => (int) $period->amount, 'status' => $paid ? 'paid' : 'unpaid'];
+        });
+        $totalTagihan = (int) $allRows->sum('amount');
+        $totalPaid = (int) $allRows->where('status', 'paid')->sum('amount');
+
+        return [
+            'periods' => $rows,
+            'pagination' => [
+                'total' => $paginated->total(),
+                'per_page' => $paginated->perPage(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+            ],
+            'summary' => [
+                'total_tagihan' => $totalTagihan,
+                'total_paid' => $totalPaid,
+                'total_unpaid' => max(0, $totalTagihan - $totalPaid),
+                'paid_count' => $allRows->where('status', 'paid')->count(),
+                'unpaid_count' => $allRows->where('status', 'unpaid')->count(),
+            ],
+        ];
+    }
 }

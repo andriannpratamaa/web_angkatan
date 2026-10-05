@@ -18,7 +18,12 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CashController;
 use App\Http\Controllers\Api\ClassController;
 use App\Http\Controllers\Api\ContentController;
+use App\Http\Controllers\Api\MemberAuthController;
+use App\Http\Controllers\Api\MemberCashController;
 use App\Http\Controllers\Api\MemberController;
+use App\Http\Controllers\Api\MemberPaymentController;
+use App\Http\Controllers\Api\MemberProfileController;
+use App\Http\Controllers\Api\MidtransWebhookController;
 use App\Http\Controllers\Api\TimahPanasController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,9 +34,32 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::post('/auth/login', [AuthController::class, 'login']);
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'abilities:admin'])->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Student Portal (mahasiswa login dengan NRP + password)
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/portal/login', [MemberAuthController::class, 'login']);
+Route::middleware(['auth:sanctum', 'abilities:student'])->prefix('portal')->group(function () {
+    Route::get('/me', [MemberAuthController::class, 'me']);
+    Route::post('/logout', [MemberAuthController::class, 'logout']);
+    Route::post('/me/password', [MemberAuthController::class, 'changePassword']);
+
+    Route::get('/profile', [MemberProfileController::class, 'show']);
+    Route::post('/profile', [MemberProfileController::class, 'update']);
+
+    Route::get('/cash', [MemberCashController::class, 'index']);
+
+    // Midtrans Payment
+    Route::post('/cash/{period}/pay', [MemberPaymentController::class, 'createTransaction']);
+    Route::get('/cash/{period}/status', [MemberPaymentController::class, 'checkStatus']);
+    Route::post('/cash/{period}/cancel', [MemberPaymentController::class, 'cancelTransaction']);
 });
 
 /*
@@ -58,11 +86,19 @@ Route::get('/timelines', [ContentController::class, 'timelines']);
 
 /*
 |--------------------------------------------------------------------------
+| Midtrans Webhook
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/midtrans/notification', [MidtransWebhookController::class, 'handle']);
+
+/*
+|--------------------------------------------------------------------------
 | Admin API
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'abilities:admin'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index']);
 
     // Keuangan: super_admin, admin, bendahara

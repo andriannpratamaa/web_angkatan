@@ -13,7 +13,7 @@ interface HeroProps {
 }
 
 export function Hero({ memberCount, balance, requirementCount, progress }: HeroProps) {
-  const [minimized, setMinimized] = useState(false)
+  const [minimized, setMinimized] = useState(true)
 
   return (
     <section className="relative flex min-h-[100svh] items-center overflow-hidden pt-24">

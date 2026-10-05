@@ -269,3 +269,83 @@ export interface UploadResult {
   size: number
   mime_type: string | null
 }
+
+export interface StudentMember {
+  id: number
+  class_id: number | null
+  name: string
+  slug: string
+  nrp: string
+  email?: string | null
+  gender: 'L' | 'P' | null
+  role: string
+  photo: string | null
+  bio: string | null
+  quote: string | null
+  instagram: string | null
+  linkedin: string | null
+  github: string | null
+  is_active: boolean
+  must_change_password?: boolean
+  last_login_at?: string | null
+  student_class?: StudentClass | null
+}
+
+export interface StudentLoginResponse {
+  message: string
+  token: string
+  member: StudentMember
+  must_change_password: boolean
+}
+
+export interface PortalPeriod {
+  id: number
+  name: string
+  month: number
+  year: number
+  amount: number
+  due_date: string | null
+  status: 'paid' | 'unpaid'
+  status_label: string
+  payment_date: string | null
+  payment_method: string | null
+}
+
+export interface PortalCashPagination {
+  total: number
+  per_page: number
+  current_page: number
+  last_page: number
+}
+
+export interface PortalCash {
+  periods: PortalPeriod[]
+  pagination?: PortalCashPagination
+  summary: {
+    total_tagihan: number
+    total_paid: number
+    total_unpaid: number
+    paid_count: number
+    unpaid_count: number
+  }
+}
+
+export interface SnapTokenResponse {
+  order_id: string
+  snap_token: string
+  snap_url: string
+  client_key: string
+  gross_amount: number
+  period_name: string
+}
+
+export interface PaymentStatusResponse {
+  tagihan_id: number
+  period_name: string
+  amount: number
+  status: 'paid' | 'unpaid' | 'pending'
+  payment_status: 'paid' | 'unpaid' | 'pending' | 'failed'
+  paid_at: string | null
+  snap_token: string | null
+  order_id: string | null
+}

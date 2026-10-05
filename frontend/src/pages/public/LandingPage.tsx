@@ -6,7 +6,7 @@ import { Hero } from '../../components/sections/Hero'
 import { AboutSection, LearnSection, QuoteSection } from '../../components/sections/LandingAbout'
 import { StatsSection } from '../../components/sections/LandingStats'
 import { PeopleSection } from '../../components/sections/LandingPeople'
-import { ActivitiesSection, TimelineSection } from '../../components/sections/LandingTimeline'
+import { ActivitiesSection } from '../../components/sections/LandingTimeline'
 import { GallerySection } from '../../components/sections/LandingGallery'
 import { SectionHeading } from '../../components/sections/SectionHeading'
 import { Skeleton } from '../../components/ui/Feedback'
@@ -38,7 +38,7 @@ export default function LandingPage() {
       <ClassSection classes={members.data?.meta.classes ?? []} />
       <PeopleSection />
       <LearnSection />
-      <TimelineSection />
+
       <ActivitiesSection />
       <GallerySection />
       <QuoteSection />

@@ -14,9 +14,9 @@ class CashPeriodController extends Controller
         return response()->json([
             'data' => CashPeriod::query()
                 ->withCount('payments')
-                ->orderByDesc('year')
-                ->orderByDesc('month')
-                ->get(),
+                ->orderBy('year')
+                ->orderBy('month')
+                ->paginate(5),
         ]);
     }
 

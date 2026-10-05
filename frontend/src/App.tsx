@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { PublicLayout, ScrollToTop } from './components/layout/PublicLayout'
 import { AdminLayout } from './components/layout/AdminLayout'
 import { useAuth } from './contexts/AuthContext'
+import { useStudentAuth } from './contexts/StudentAuthContext'
 import LandingPage from './pages/public/LandingPage'
 import AngkatanPage from './pages/public/AngkatanPage'
 import AngkatanDetailPage from './pages/public/AngkatanDetailPage'
@@ -11,6 +12,8 @@ import KegiatanPage from './pages/public/KegiatanPage'
 import KasPage from './pages/public/KasPage'
 import TimahPanasPage from './pages/public/TimahPanasPage'
 import TimahPanasDetailPage from './pages/public/TimahPanasDetailPage'
+import StudentLoginPage from './pages/public/StudentLoginPage'
+import StudentDashboardPage from './pages/public/StudentDashboardPage'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminMahasiswaPage from './pages/admin/AdminMahasiswaPage'
@@ -50,6 +53,24 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+function RequireStudent({ children }: { children: ReactNode }) {
+  const { member, loading } = useStudentAuth()
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <span className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-brand" />
+      </div>
+    )
+  }
+
+  if (!member) {
+    return <Navigate to="/masuk" replace />
+  }
+
+  return <>{children}</>
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -64,6 +85,15 @@ export default function App() {
           <Route path="/kas" element={<KasPage />} />
           <Route path="/timahpanas" element={<TimahPanasPage />} />
           <Route path="/timahpanas/:slug" element={<TimahPanasDetailPage />} />
+          <Route path="/masuk" element={<StudentLoginPage />} />
+          <Route
+            path="/akun"
+            element={
+              <RequireStudent>
+                <StudentDashboardPage />
+              </RequireStudent>
+            }
+          />
         </Route>
 
         <Route path="/admin/login" element={<AdminLoginPage />} />

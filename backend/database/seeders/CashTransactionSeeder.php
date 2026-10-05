@@ -11,7 +11,7 @@ class CashTransactionSeeder extends Seeder
     public function run(): void
     {
         CashSetting::updateOrCreate(['id' => 1], [
-            'monthly_amount' => 20000,
+            'monthly_amount' => 10200,
             'treasurer_name' => 'Bendahara TO26',
             'notes' => 'Kas wajib dibayarkan setiap bulan maksimal tanggal 20.',
         ]);
