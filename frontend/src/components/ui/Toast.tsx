@@ -15,6 +15,7 @@ interface ToastContextValue {
   push: (message: string, type?: ToastType) => void
   success: (message: string) => void
   error: (message: string) => void
+  info: (message: string) => void
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
@@ -45,6 +46,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     push,
     success: (message) => push(message, 'success'),
     error: (message) => push(message, 'error'),
+    info: (message) => push(message, 'info'),
   }
 
   return (

@@ -13,22 +13,20 @@ import {
 import { cashService } from '../../services/cashService'
 import { getErrorMessage } from '../../lib/api'
 import type { CashPeriod, MemberStatusRow, StudentClass } from '../../lib/types'
-import { cn, formatDate, formatRupiah } from '../../lib/format'
+import { formatDate, formatRupiah } from '../../lib/format'
 import { LightStatusBadge } from '../../components/common/StatusBadge'
 import { LightEmptyState, LightErrorState, LightSkeletonList } from '../../components/ui/LightFeedback'
 import { Modal } from '../../components/ui/Modal'
-import { Field, SearchInput, Select, TextInput } from '../../components/ui/Controls'
+import { Field, SearchInput, Select } from '../../components/ui/Controls'
 import { useToast } from '../../components/ui/Toast'
 
 export default function AdminKasDetailPage() {
   const { classId } = useParams<{ classId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
   const toast = useToast()
 
   const [periods, setPeriods] = useState<CashPeriod[]>([])
   const [rows, setRows] = useState<MemberStatusRow[]>([])
-  const [classes, setClasses] = useState<StudentClass[]>([])
   const [classInfo, setClassInfo] = useState<StudentClass | null>(null)
 
   const [periodId, setPeriodId] = useState(searchParams.get('period') ?? '')
@@ -54,7 +52,7 @@ export default function AdminKasDetailPage() {
     if (!classId) return
     try {
       const list = await cashService.adminClasses()
-      const cls = list.find((c) => c.id === Number(classId))
+      const cls = list.find((c: StudentClass) => c.id === Number(classId))
       if (cls) setClassInfo(cls)
     } catch (err) {
       console.error('Failed to load class info:', err)

@@ -101,11 +101,7 @@ export default function AdminKasPage() {
   )
 }
 
-function OverviewTab({ classes }: { classes: StudentClass[] }) {
-  const navigate = useNavigate()
-  const onPickClass = (id: number) => {
-    navigate(`/admin/kas/detail/${id}`)
-  }
+function OverviewTab({ classes, onPickClass }: { classes: StudentClass[]; onPickClass: (id: number) => void }) {
   const [data, setData] = useState<CashOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

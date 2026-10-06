@@ -17,7 +17,7 @@ import { useStudentAuth } from '../../contexts/StudentAuthContext'
 import { useApi } from '../../hooks/useApi'
 import { studentService } from '../../services/studentService'
 import { getErrorMessage } from '../../lib/api'
-import type { PortalCash, PaymentStatusResponse, SnapTokenResponse } from '../../lib/types'
+import type { PortalCash, PaymentStatusResponse, SnapTokenResponse, PortalPeriod } from '../../lib/types'
 import { formatDate, formatRupiah } from '../../lib/format'
 import { Avatar } from '../../components/common/Avatar'
 import { StatCard } from '../../components/common/StatCard'
@@ -226,7 +226,7 @@ function CashTab() {
     return () => clearInterval(interval)
   }, [pollingId, portal, refetch, toast])
 
-  const handlePay = async (periodId: number, periodName: string, amount: number) => {
+  const handlePay = async (periodId: number) => {
     setSnapLoadingId(periodId)
     try {
       const result: SnapTokenResponse = await studentService.createPayment(periodId)
@@ -357,7 +357,7 @@ function CashTab() {
                         <button
                           type="button"
                           disabled={display.isLoading}
-                          onClick={() => handlePay(period.id, period.name, period.amount)}
+                          onClick={() => handlePay(period.id)}
                           className="btn-primary btn-sm"
                         >
                           {display.isLoading ? (

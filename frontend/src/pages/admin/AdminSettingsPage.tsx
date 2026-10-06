@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Database, Server } from 'lucide-react'
+import { CheckCircle2, Database, Globe, Server } from 'lucide-react'
 import { cashService } from '../../services/cashService'
 import { getErrorMessage } from '../../lib/api'
 import { formatRupiah } from '../../lib/format'

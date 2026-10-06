@@ -1,5 +1,4 @@
 import { CalendarDays, Clock3, MapPin } from 'lucide-react'
-import { useState } from 'react'
 import { useApi } from '../../hooks/useApi'
 import type { Activity, TimelineItem } from '../../lib/types'
 import { formatDate } from '../../lib/format'
