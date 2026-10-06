@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
-  CalendarClock,
   CheckCircle2,
-  Pencil,
-  Users,
   Wallet,
-  XCircle,
   RotateCcw,
 } from 'lucide-react'
 import { cashService } from '../../services/cashService'
