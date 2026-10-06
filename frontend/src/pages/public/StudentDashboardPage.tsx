@@ -146,7 +146,7 @@ function CashTab() {
       navigate(location.pathname, { replace: true })
       
       if (paymentStatus === 'finish') {
-        toast.success('Pembayaran selesai. Memeriksa status...')
+        // Don't show toast here - let polling handle success notification
         // Trigger immediate status check for all periods
         refetch()
       } else if (paymentStatus === 'error') {

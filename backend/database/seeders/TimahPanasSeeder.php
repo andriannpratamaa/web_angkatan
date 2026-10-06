@@ -51,9 +51,7 @@ class TimahPanasSeeder extends Seeder
                 'description' => 'Mahasiswa dengan kehadiran penuh pada seluruh rangkaian Timah Panas.',
                 'target' => 3,
                 'sort_order' => 4,
-                'take' => 3,
-                'offset' => 10,
-                'date' => '2026-11-28',
+                'type' => 'date',
                 'notes' => 'Presensi penuh 100%.',
             ],
         ];
@@ -67,8 +65,14 @@ class TimahPanasSeeder extends Seeder
                     'target' => $data['target'],
                     'sort_order' => $data['sort_order'],
                     'is_active' => true,
+                    'type' => $data['type'] ?? 'member',
                 ],
             );
+
+            // Skip participant creation for date-based requirements (presensi)
+            if (($data['type'] ?? 'member') === 'date') {
+                continue;
+            }
 
             $members = $this->interleavedMembers()
                 ->skip($data['offset'])

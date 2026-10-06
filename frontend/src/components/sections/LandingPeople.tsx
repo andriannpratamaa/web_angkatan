@@ -9,7 +9,13 @@ import { SectionHeading } from './SectionHeading'
 
 export function PeopleSection() {
   const { data, loading, error } = useApi<MembersResponse>('/members')
-  const members = (data?.data ?? []).slice(0, 8)
+  const allMembers = data?.data ?? []
+
+  // Move Oktavian Andrian Pratama (developer) to top
+  const devMember = allMembers.find((m) => m.nrp === '0926040059' || m.name === 'Oktavian Andrian Pratama')
+  const otherMembers = allMembers.filter((m) => m.nrp !== '0926040059' && m.name !== 'Oktavian Andrian Pratama')
+  const members = devMember ? [devMember, ...otherMembers] : allMembers
+  const displayMembers = members.slice(0, 8)
 
   return (
     <section className="section-pad relative border-t border-white/5">
@@ -35,23 +41,38 @@ export function PeopleSection() {
             ? Array.from({ length: 8 }).map((_, index) => (
                 <Skeleton key={index} className="h-48 w-full rounded-2xl" />
               ))
-            : members.map((member, index) => (
-                <Reveal key={member.id} delay={index * 0.04}>
-                  <Link
-                    to="/angkatan"
-                    className="card card-hover flex h-full flex-col items-center p-6 text-center"
-                  >
-                    <Avatar name={member.name} photo={member.photo} size="xl" />
-                    <p className="mt-4 font-display text-base font-semibold text-snow">
-                      {member.name}
-                    </p>
-                    <p className="mt-1 font-mono text-[11px] uppercase tracking-widest text-aqua">
-                      {member.role}
-                    </p>
-                    <p className="mt-2 font-mono text-xs text-slate-500">{member.nrp}</p>
-                  </Link>
-                </Reveal>
-              ))}
+            : displayMembers.map((member, index) => {
+                const isDev = member.nrp === '0926040059' || member.name === 'Oktavian Andrian Pratama'
+                return (
+                  <Reveal key={member.id} delay={index * 0.04}>
+                    <div className={isDev ? 'relative' : ''}>
+                      {isDev ? (
+                        <div className="absolute -inset-[1px] z-0 rounded-2xl bg-gradient-to-br from-yellow-400 via-brand to-pink-500 opacity-80 blur-sm" />
+                      ) : null}
+                      {isDev ? (
+                        <span className="absolute left-3 top-3 z-20 rounded-full bg-gradient-to-r from-yellow-400 to-brand px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-white shadow-xl ring-2 ring-white/30">
+                          ✦ Developer ✦
+                        </span>
+                      ) : null}
+                      <div className={isDev ? 'relative z-10' : ''}>
+                        <Link
+                          to="/angkatan"
+                          className="card card-hover flex h-full flex-col items-center p-6 text-center"
+                        >
+                          <Avatar name={member.name} photo={member.photo} size="xl" />
+                          <p className="mt-4 font-display text-base font-semibold text-snow">
+                            {member.name}
+                          </p>
+                          <p className="mt-1 font-mono text-[11px] uppercase tracking-widest text-aqua">
+                            {member.role}
+                          </p>
+                          <p className="mt-2 font-mono text-xs text-slate-500">{member.nrp}</p>
+                        </Link>
+                      </div>
+                    </div>
+                  </Reveal>
+                )
+              })}
         </div>
       </div>
     </section>

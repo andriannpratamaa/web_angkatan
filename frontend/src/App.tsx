@@ -19,6 +19,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminMahasiswaPage from './pages/admin/AdminMahasiswaPage'
 import AdminKelasPage from './pages/admin/AdminKelasPage'
 import AdminKasPage from './pages/admin/AdminKasPage'
+import AdminKasDetailPage from './pages/admin/AdminKasDetailPage'
 import AdminTimahPanasPage from './pages/admin/AdminTimahPanasPage'
 import AdminPesertaPage from './pages/admin/AdminPesertaPage'
 import AdminGaleriPage from './pages/admin/AdminGaleriPage'
@@ -112,6 +113,7 @@ export default function App() {
           <Route path="mahasiswa" element={<AdminMahasiswaPage />} />
           <Route path="kelas" element={<AdminKelasPage />} />
           <Route path="kas" element={<AdminKasPage />} />
+          <Route path="kas/detail/:classId" element={<AdminKasDetailPage />} />
           <Route path="timahpanas" element={<AdminTimahPanasPage />} />
           <Route path="timahpanas/:id/peserta" element={<AdminPesertaPage />} />
           <Route path="galeri" element={<AdminGaleriPage />} />

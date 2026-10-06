@@ -129,4 +129,27 @@ class CashPaymentController extends Controller
 
         return response()->json(['message' => 'Data berhasil dihapus.']);
     }
+
+    /**
+     * Admin: Update payment status manually (paid/unpaid)
+     */
+    public function updateStatus(Request $request, CashPayment $payment): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['required', 'in:paid,unpaid'],
+        ]);
+
+        $payment->update([
+            'status' => $data['status'],
+            'payment_date' => $data['status'] === CashPayment::STATUS_PAID ? now()->toDateString() : null,
+            'notes' => $data['status'] === CashPayment::STATUS_PAID
+                ? 'Dilunasi manual oleh admin'
+                : 'Dibatalkan manual oleh admin',
+        ]);
+
+        return response()->json([
+            'message' => 'Status pembayaran berhasil diperbarui.',
+            'data' => $payment->fresh()->load('member', 'period'),
+        ]);
+    }
 }

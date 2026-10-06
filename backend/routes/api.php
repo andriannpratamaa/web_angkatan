@@ -115,6 +115,7 @@ Route::middleware(['auth:sanctum', 'abilities:admin'])->prefix('admin')->group(f
         Route::post('/cash/payments', [AdminCashPaymentController::class, 'store']);
         Route::put('/cash/payments/{payment}', [AdminCashPaymentController::class, 'update']);
         Route::delete('/cash/payments/{payment}', [AdminCashPaymentController::class, 'destroy']);
+        Route::patch('/cash/payments/{payment}/status', [AdminCashPaymentController::class, 'updateStatus']);
 
         Route::get('/cash/transactions', [AdminCashTransactionController::class, 'index']);
         Route::post('/cash/transactions', [AdminCashTransactionController::class, 'store']);
@@ -140,6 +141,11 @@ Route::middleware(['auth:sanctum', 'abilities:admin'])->prefix('admin')->group(f
         Route::post('/timah-panas', [AdminTimahPanasController::class, 'store']);
         Route::put('/timah-panas/{requirement}', [AdminTimahPanasController::class, 'update']);
         Route::delete('/timah-panas/{requirement}', [AdminTimahPanasController::class, 'destroy']);
+
+        // Date-based attendance (Presensi)
+        Route::get('/timah-panas/{requirement}/attendances', [AdminTimahPanasController::class, 'attendances']);
+        Route::post('/timah-panas/{requirement}/attendances', [AdminTimahPanasController::class, 'addAttendance']);
+        Route::delete('/timah-panas/{requirement}/attendances', [AdminTimahPanasController::class, 'removeAttendance']);
 
         Route::get('/timah-panas/{requirement}/participants', [AdminParticipantController::class, 'index']);
         Route::post('/timah-panas/{requirement}/participants/bulk', [AdminParticipantController::class, 'bulk']);

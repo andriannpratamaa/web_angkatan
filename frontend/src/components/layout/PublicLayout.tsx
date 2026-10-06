@@ -195,10 +195,9 @@ function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-line">
+<div className="border-t border-line">
         <div className="container-x flex flex-col items-center justify-between gap-3 py-6 text-xs text-faint sm:flex-row">
           <p>&copy; {new Date().getFullYear()} TO26 - Teknik Otomasi 2026</p>
-          <p className="font-mono">React, Vite &amp; Laravel 10</p>
         </div>
       </div>
     </footer>

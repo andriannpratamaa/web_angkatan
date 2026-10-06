@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Database, Globe, Server } from 'lucide-react'
+import { CheckCircle2, Database, Server } from 'lucide-react'
 import { cashService } from '../../services/cashService'
 import { getErrorMessage } from '../../lib/api'
 import { formatRupiah } from '../../lib/format'
@@ -81,24 +81,6 @@ export default function AdminSettingsPage() {
             {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
           </button>
         </div>
-      </div>
-
-      <div className="card p-5 sm:p-6">
-        <h3 className="font-display text-base font-semibold text-content">Informasi Sistem</h3>
-        <dl className="mt-4 space-y-3 text-sm">
-          {[
-            ['Base URL API', apiUrl],
-            ['Backend', 'Laravel 10 REST API + Sanctum'],
-            ['Database', 'MySQL - to26'],
-            ['Frontend', 'React + Vite + TypeScript'],
-            ['Media Storage', 'Cloudinary'],
-          ].map(([label, value]) => (
-            <div key={label} className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3 last:border-0 last:pb-0">
-              <dt className="text-muted">{label}</dt>
-              <dd className="font-mono text-xs text-content">{value}</dd>
-            </div>
-          ))}
-        </dl>
       </div>
     </div>
   )

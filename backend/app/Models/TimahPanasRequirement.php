@@ -18,6 +18,7 @@ class TimahPanasRequirement extends Model
         'target',
         'sort_order',
         'is_active',
+        'type',
     ];
 
     protected $casts = [
@@ -33,6 +34,12 @@ class TimahPanasRequirement extends Model
         return $this->hasMany(TimahPanasParticipant::class, 'requirement_id');
     }
 
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(TimahPanasParticipant::class, 'requirement_id')
+            ->whereNull('member_id');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
@@ -42,6 +49,13 @@ class TimahPanasRequirement extends Model
     {
         if (array_key_exists('participants_count', $this->attributes)) {
             return (int) $this->attributes['participants_count'];
+        }
+
+        // For date-based requirements, count unique attendance dates
+        if ($this->type === 'date') {
+            return $this->attendances()
+                ->distinct('participation_date')
+                ->count('participation_date');
         }
 
         return $this->participants()->count();

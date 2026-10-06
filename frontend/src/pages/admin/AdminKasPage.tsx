@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   CalendarClock,
   CheckCircle2,
@@ -101,7 +101,11 @@ export default function AdminKasPage() {
   )
 }
 
-function OverviewTab({ classes, onPickClass }: { classes: StudentClass[]; onPickClass: (id: number | 'all') => void }) {
+function OverviewTab({ classes }: { classes: StudentClass[] }) {
+  const navigate = useNavigate()
+  const onPickClass = (id: number) => {
+    navigate(`/admin/kas/detail/${id}`)
+  }
   const [data, setData] = useState<CashOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

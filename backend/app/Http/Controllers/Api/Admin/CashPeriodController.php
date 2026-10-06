@@ -16,7 +16,7 @@ class CashPeriodController extends Controller
                 ->withCount('payments')
                 ->orderBy('year')
                 ->orderBy('month')
-                ->paginate(5),
+                ->get(),
         ]);
     }
 

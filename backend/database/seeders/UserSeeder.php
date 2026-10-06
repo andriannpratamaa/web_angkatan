@@ -11,10 +11,10 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         User::updateOrCreate(
-            ['email' => 'admin@to26.test'],
+            ['email' => 'koor@gmail.com'],
             [
                 'name' => 'Super Admin TO26',
-                'password' => 'password',
+                'password' => 'tegar123',
                 'role' => User::ROLE_SUPER_ADMIN,
             ],
         );

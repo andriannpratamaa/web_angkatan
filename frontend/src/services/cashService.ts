@@ -51,6 +51,10 @@ export const cashService = {
     )
     return data
   },
+  adminClasses: async () => {
+    const { data } = await api.get('/admin/classes')
+    return data.data
+  },
   payments: async (params: Record<string, unknown> = {}) => {
     const { data } = await api.get<{ data: MemberStatusRow[]; meta: Record<string, number> }>(
       '/cash/payments',
@@ -116,6 +120,10 @@ export const cashService = {
   },
   deletePayment: async (id: number) => {
     const { data } = await api.delete(`/admin/cash/payments/${id}`)
+    return data
+  },
+  updatePaymentStatus: async (id: number, status: 'paid' | 'unpaid') => {
+    const { data } = await api.patch(`/admin/cash/payments/${id}/status`, { status })
     return data
   },
 
