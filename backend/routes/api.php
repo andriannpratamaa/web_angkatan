@@ -23,7 +23,6 @@ use App\Http\Controllers\Api\MemberCashController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberPaymentController;
 use App\Http\Controllers\Api\MemberProfileController;
-use App\Http\Controllers\Api\MidtransWebhookController;
 use App\Http\Controllers\Api\TimahPanasController;
 use Illuminate\Support\Facades\Route;
 
@@ -56,10 +55,7 @@ Route::middleware(['auth:sanctum', 'abilities:student'])->prefix('portal')->grou
 
     Route::get('/cash', [MemberCashController::class, 'index']);
 
-    // Midtrans Payment
-    Route::post('/cash/{period}/pay', [MemberPaymentController::class, 'createTransaction']);
-    Route::get('/cash/{period}/status', [MemberPaymentController::class, 'checkStatus']);
-    Route::post('/cash/{period}/cancel', [MemberPaymentController::class, 'cancelTransaction']);
+    Route::post('/cash/{period}/pay', [MemberPaymentController::class, 'uploadProof']);
 });
 
 /*
@@ -86,14 +82,6 @@ Route::get('/timelines', [ContentController::class, 'timelines']);
 
 /*
 |--------------------------------------------------------------------------
-| Midtrans Webhook
-|--------------------------------------------------------------------------
-*/
-
-Route::post('/midtrans/notification', [MidtransWebhookController::class, 'handle']);
-
-/*
-|--------------------------------------------------------------------------
 | Admin API
 |--------------------------------------------------------------------------
 */
@@ -104,6 +92,8 @@ Route::middleware(['auth:sanctum', 'abilities:admin'])->prefix('admin')->group(f
     // Keuangan: super_admin, admin, bendahara
     Route::middleware('role:super_admin,admin,bendahara')->group(function () {
         Route::get('/cash/overview', [AdminCashController::class, 'overview']);
+        Route::get('/cash/pending-proofs', [AdminCashController::class, 'pendingProofs']);
+        Route::get('/cash/pending-proofs/list', [AdminCashController::class, 'pendingProofsList']);
 
         Route::get('/cash/periods', [AdminCashPeriodController::class, 'index']);
         Route::post('/cash/periods', [AdminCashPeriodController::class, 'store']);

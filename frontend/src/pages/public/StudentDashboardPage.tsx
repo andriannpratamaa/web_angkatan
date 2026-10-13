@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ElementType } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
   Save,
   Settings,
   ShieldCheck,
+  Upload,
   Wallet,
   XCircle,
 } from 'lucide-react'
@@ -17,7 +18,7 @@ import { useStudentAuth } from '../../contexts/StudentAuthContext'
 import { useApi } from '../../hooks/useApi'
 import { studentService } from '../../services/studentService'
 import { getErrorMessage } from '../../lib/api'
-import type { PortalCash, PaymentStatusResponse, SnapTokenResponse, PortalPeriod } from '../../lib/types'
+import type { PortalCash, PortalPeriod } from '../../lib/types'
 import { formatDate, formatRupiah } from '../../lib/format'
 import { Avatar } from '../../components/common/Avatar'
 import { StatCard } from '../../components/common/StatCard'
@@ -126,174 +127,54 @@ function CashTab() {
   )
   const portal = data?.data
   const toast = useToast()
-  const navigate = useNavigate()
-  const location = useLocation()
 
-  // Midtrans Snap state
-  const [snapLoadingId, setSnapLoadingId] = useState<number | null>(null)
-  const [pollingId, setPollingId] = useState<number | null>(null)
-  const [periodStatus, setPeriodStatus] = useState<Record<number, PaymentStatusResponse>>({})
-  const snapLoadedRef = useRef(false)
-  const notifiedPaidRef = useRef<Set<number>>(new Set())
-
-  // Handle redirect from Midtrans (payment=finish|error|pending)
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const paymentStatus = params.get('payment')
-    
-    if (paymentStatus && portal) {
-      // Clean URL
-      navigate(location.pathname, { replace: true })
-      
-      if (paymentStatus === 'finish') {
-        // Don't show toast here - let polling handle success notification
-        // Trigger immediate status check for all periods
-        refetch()
-      } else if (paymentStatus === 'error') {
-        toast.error('Pembayaran gagal atau dibatalkan.')
-      } else if (paymentStatus === 'pending') {
-        toast.info('Pembayaran sedang diproses. Silakan tunggu...')
-      }
-    }
-  }, [location.search, navigate, portal, refetch, toast])
+  const [uploadingId, setUploadingId] = useState<number | null>(null)
+  const [showQrId, setShowQrId] = useState<number | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null)
 
   useEffect(() => {
     refetch()
   }, [page, refetch])
 
-  // Load Midtrans Snap.js
-  useEffect(() => {
-    if (snapLoadedRef.current) return
-
-    const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY
-    if (!clientKey) {
-      console.warn('Midtrans Client Key not configured')
-      return
-    }
-
-    // Check if already loaded
-    if (window.snap) {
-      snapLoadedRef.current = true
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = 'https://app.sandbox.midtrans.com/snap/snap.js'
-    script.setAttribute('data-client-key', clientKey)
-    script.async = true
-    script.onload = () => {
-      snapLoadedRef.current = true
-    }
-    script.onerror = () => {
-      console.error('Failed to load Midtrans Snap.js')
-    }
-    document.head.appendChild(script)
-
-    return () => {
-      // Don't remove script on unmount
-    }
-  }, [])
-
-  // Polling for payment status
-  useEffect(() => {
-    if (!pollingId || !portal) return
-
-    const interval = setInterval(async () => {
-      try {
-        const status = await studentService.checkPaymentStatus(pollingId)
-        setPeriodStatus((prev) => ({ ...prev, [pollingId]: status }))
-
-        // Stop polling if paid or failed
-        if (status.status === 'paid' || status.payment_status === 'paid') {
-          // Only show toast once per period
-          if (!notifiedPaidRef.current.has(pollingId)) {
-            notifiedPaidRef.current.add(pollingId)
-            toast.success(`${status.period_name} telah LUNAS!`)
-          }
-          setPollingId(null)
-          refetch() // Refresh the list
-        } else if (status.payment_status === 'failed') {
-          if (!notifiedPaidRef.current.has(pollingId)) {
-            toast.error(`Pembayaran ${status.period_name} gagal atau kedaluwarsa.`)
-          }
-          setPollingId(null)
-        }
-      } catch (e) {
-        console.error('Polling error:', e)
-      }
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }, [pollingId, portal, refetch, toast])
-
-  const handlePay = async (periodId: number) => {
-    setSnapLoadingId(periodId)
-    try {
-      const result: SnapTokenResponse = await studentService.createPayment(periodId)
-
-      if (!window.snap) {
-        throw new Error('Midtrans Snap belum dimuat. Silakan coba lagi.')
-      }
-
-      // Start polling after initiating payment
-      setPollingId(periodId)
-
-      window.snap.pay(result.snap_token, {
-        onSuccess: (result: any) => {
-          console.log('Payment success:', result)
-          // Don't rely on this - use polling + webhook
-        },
-        onPending: (result: any) => {
-          console.log('Payment pending:', result)
-        },
-        onError: (result: any) => {
-          console.error('Payment error:', result)
-        },
-        onClose: () => {
-          console.log('Snap closed')
-          // Continue polling to check actual status
-        },
-      })
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || getErrorMessage(err) || 'Gagal memulai pembayaran')
-    } finally {
-      setSnapLoadingId(null)
+  const handleFileSelect = (periodId: number) => {
+    setSelectedPeriodId(periodId)
+    setSelectedFile(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+      fileInputRef.current.click()
     }
   }
 
-  // Get combined status for a period
-  const getPeriodDisplay = (period: PortalPeriod) => {
-    const status = periodStatus[period.id]
-    if (status) {
-      return {
-        status: status.status,
-        label: status.status === 'paid' ? 'LUNAS' : status.status === 'pending' ? 'MENUNGGU PEMBAYARAN' : 'BELUM LUNAS',
-        isLoading: false,
-        paidAt: status.paid_at,
-      }
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null
+    setSelectedFile(file)
+  }
+
+  const handleUpload = async () => {
+    if (!selectedPeriodId || !selectedFile) return
+    setUploadingId(selectedPeriodId)
+    try {
+      await studentService.uploadProof(selectedPeriodId, selectedFile)
+      toast.success('Bukti pembayaran berhasil diunggah. Menunggu verifikasi admin.')
+      setSelectedFile(null)
+      setSelectedPeriodId(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      refetch()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || getErrorMessage(err) || 'Gagal mengunggah bukti pembayaran')
+    } finally {
+      setUploadingId(null)
     }
+  }
+
+  const getPeriodDisplay = (period: PortalPeriod) => {
     return {
       status: period.status,
       label: period.status_label,
-      isLoading: snapLoadingId === period.id,
       paidAt: period.payment_date,
-    }
-  }
-
-  const handleCancel = async (periodId: number, periodName: string) => {
-    if (!confirm(`Batalkan pembayaran untuk ${periodName}?`)) return
-    try {
-      await studentService.cancelPayment(periodId)
-      toast.success('Transaksi dibatalkan.')
-      setPeriodStatus((prev) => {
-        const next = { ...prev }
-        delete next[periodId]
-        return next
-      })
-      setPollingId(null)
-      refetch()
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || getErrorMessage(err) || 'Gagal membatalkan transaksi')
+      receiptUrl: period.receipt_url,
     }
   }
 
@@ -339,36 +220,37 @@ function CashTab() {
                         <span className="font-mono text-xs text-muted">
                           {display.paidAt ? formatDate(display.paidAt) : ''}
                         </span>
-                      ) : display.status === 'pending' ? (
+                      ) : (
                         <div className="flex items-center gap-2">
-                          <span className="flex items-center gap-1.5 text-sm text-brand">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            MENUNGGU PEMBAYARAN
-                          </span>
+                          {display.receiptUrl ? (
+                            <span className="text-xs text-brand">Menunggu verifikasi</span>
+                          ) : null}
                           <button
                             type="button"
-                            onClick={() => handleCancel(period.id, period.name)}
-                            className="btn-ghost btn-sm text-error hover:text-error"
+                            disabled={uploadingId === period.id}
+                            onClick={() => handleFileSelect(period.id)}
+                            className="btn-primary btn-sm"
                           >
-                            Batalkan
+                            {uploadingId === period.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Mengunggah...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Upload Bukti
+                              </>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowQrId(showQrId === period.id ? null : period.id)}
+                            className="btn-ghost btn-sm"
+                          >
+                            Lihat QR
                           </button>
                         </div>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={display.isLoading}
-                          onClick={() => handlePay(period.id)}
-                          className="btn-primary btn-sm"
-                        >
-                          {display.isLoading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              Memproses...
-                            </>
-                          ) : (
-                            'Bayar Sekarang'
-                          )}
-                        </button>
                       )}
                     </div>
                   </div>
@@ -401,10 +283,63 @@ function CashTab() {
               </div>
             ) : null}
             <div className="border-t border-line bg-elevated px-5 py-3 text-xs text-muted">
-              Pembayaran via Midtrans (QRIS, GoPay, ShopeePay, dll). Status akan otomatis terupdate.
+              Scan QRIS untuk pembayaran, lalu upload bukti pembayaran. Status akan diverifikasi oleh admin.
             </div>
           </div>
         </>
+      )}
+
+      {showQrId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowQrId(null)}>
+          <div className="card max-w-sm w-full p-6 text-center" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-lg font-semibold text-content">QRIS Pembayaran Kas</h3>
+            <p className="mt-1 text-sm text-muted">Scan QR berikut untuk membayar kas bulanan</p>
+            <div className="mt-4 flex justify-center">
+              <img src="/qr.jpeg" alt="QRIS Pembayaran" className="w-64 h-64 rounded-xl border border-line object-contain" />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowQrId(null)}
+              className="btn-outline mt-4 w-full"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,application/pdf"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
+      {selectedFile && selectedPeriodId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => { setSelectedFile(null); setSelectedPeriodId(null) }}>
+          <div className="card max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-lg font-semibold text-content">Konfirmasi Upload</h3>
+            <p className="mt-1 text-sm text-muted">File: {selectedFile.name}</p>
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => { setSelectedFile(null); setSelectedPeriodId(null) }}
+                className="btn-outline"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleUpload}
+                disabled={uploadingId !== null}
+                className="btn-primary"
+              >
+                {uploadingId ? 'Mengunggah...' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

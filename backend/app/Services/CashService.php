@@ -169,6 +169,7 @@ class CashService
                 'status_label' => $paid ? 'LUNAS' : 'BELUM BAYAR',
                 'amount' => $paid ? (int) $payment->amount : 0,
                 'payment_date' => $paid ? $payment->payment_date : null,
+                'receipt_url' => $payment?->receipt_url,
                 'notes' => $payment?->notes,
                 'period' => $period?->name,
             ];
@@ -176,6 +177,10 @@ class CashService
 
         if ($status === 'paid' || $status === 'unpaid') {
             $rows = $rows->where('status', $status)->values();
+        } elseif ($status === 'pending') {
+            $rows = $rows->filter(function ($row) {
+                return $row['status'] === 'unpaid' && $row['receipt_url'] !== null;
+            })->values();
         }
 
         return $rows->values();
@@ -187,6 +192,37 @@ class CashService
         $summary['classes'] = $this->classBreakdown($summary['period']);
 
         return $summary;
+    }
+
+    public function pendingProofsCount(): int
+    {
+        return CashPayment::query()
+            ->where('status', CashPayment::STATUS_UNPAID)
+            ->whereNotNull('receipt_url')
+            ->count();
+    }
+
+    public function pendingProofsList(): array
+    {
+        return CashPayment::query()
+            ->where('status', CashPayment::STATUS_UNPAID)
+            ->whereNotNull('receipt_url')
+            ->with(['member.studentClass:id,code', 'period:id,name'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn (CashPayment $p) => [
+                'payment_id' => $p->id,
+                'member_id' => $p->member_id,
+                'member_name' => $p->member?->name,
+                'nrp' => $p->member?->nrp,
+                'class' => $p->member->studentClass?->label,
+                'period_name' => $p->period?->name,
+                'amount' => (int) $p->amount,
+                'receipt_url' => $p->receipt_url,
+                'uploaded_at' => $p->created_at?->format('Y-m-d H:i'),
+            ])
+            ->values()
+            ->toArray();
     }
 
     /**
@@ -221,6 +257,7 @@ class CashService
                 'status_label' => $paid ? 'Lunas' : 'Belum Bayar',
                 'payment_date' => $paid ? $payment->payment_date : null,
                 'payment_method' => $payment?->payment_method,
+                'receipt_url' => $payment?->receipt_url,
             ];
         })->values();
 

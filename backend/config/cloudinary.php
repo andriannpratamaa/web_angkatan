@@ -11,6 +11,7 @@ return [
         'activities' => 'to26/activities',
         'receipts' => 'to26/cash/receipts',
         'proofs' => 'to26/timah-panas/proofs',
+        'payment_proofs' => 'to26/cash/proofs',
         'documents' => 'to26/documents',
     ],
 ];

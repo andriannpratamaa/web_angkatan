@@ -133,19 +133,27 @@ class CashPaymentController extends Controller
     /**
      * Admin: Update payment status manually (paid/unpaid)
      */
-    public function updateStatus(Request $request, CashPayment $payment): JsonResponse
+    public function updateStatus(Request $request, CashPayment $payment, CloudinaryService $cloudinary): JsonResponse
     {
         $data = $request->validate([
             'status' => ['required', 'in:paid,unpaid'],
         ]);
 
-        $payment->update([
+        $updateData = [
             'status' => $data['status'],
             'payment_date' => $data['status'] === CashPayment::STATUS_PAID ? now()->toDateString() : null,
             'notes' => $data['status'] === CashPayment::STATUS_PAID
                 ? 'Dilunasi manual oleh admin'
                 : 'Dibatalkan manual oleh admin',
-        ]);
+        ];
+
+        if ($data['status'] === CashPayment::STATUS_UNPAID && $payment->receipt_public_id) {
+            $cloudinary->destroy($payment->receipt_public_id, 'image');
+            $updateData['receipt_url'] = null;
+            $updateData['receipt_public_id'] = null;
+        }
+
+        $payment->update($updateData);
 
         return response()->json([
             'message' => 'Status pembayaran berhasil diperbarui.',

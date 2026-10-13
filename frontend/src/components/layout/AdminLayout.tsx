@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { ElementType, ReactNode } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -16,10 +16,12 @@ import {
   Wallet,
   GraduationCap,
   X,
+  Bell,
 } from 'lucide-react'
 import { Logo } from '../common/Logo'
 import { ThemeToggle } from '../common/ThemeToggle'
 import { useAuth } from '../../contexts/AuthContext'
+import { cashService } from '../../services/cashService'
 import { cn } from '../../lib/format'
 import type { AdminRole } from '../../lib/types'
 
@@ -90,13 +92,67 @@ function resolveTitle(pathname: string): string {
   return 'Admin TO26'
 }
 
+interface PendingProof {
+  payment_id: number
+  member_id: number
+  member_name: string
+  nrp: string
+  class: string | null
+  period_name: string | null
+  amount: number
+  receipt_url: string
+  uploaded_at: string
+}
+
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const [pendingCount, setPendingCount] = useState(0)
+  const [pendingList, setPendingList] = useState<PendingProof[]>([])
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [verifyingId, setVerifyingId] = useState<number | null>(null)
 
   useEffect(() => setOpen(false), [location.pathname])
+
+  const fetchPending = useCallback(async () => {
+    try {
+      const [countRes, listRes] = await Promise.all([
+        cashService.pendingProofs(),
+        cashService.pendingProofsList(),
+      ])
+      setPendingCount(countRes?.data?.count ?? 0)
+      setPendingList(listRes?.data ?? [])
+    } catch (err) {
+      console.error('Failed to fetch pending proofs:', err)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchPending()
+    const interval = setInterval(fetchPending, 30000)
+    return () => clearInterval(interval)
+  }, [fetchPending])
+
+  const handleVerify = async (paymentId: number) => {
+    setVerifyingId(paymentId)
+    try {
+      await cashService.updatePaymentStatus(paymentId, 'paid')
+      setPendingList((prev) => prev.filter((p) => p.payment_id !== paymentId))
+      setPendingCount((prev) => Math.max(0, prev - 1))
+    } catch (err) {
+      console.error('Failed to verify payment:', err)
+      await fetchPending()
+    } finally {
+      setVerifyingId(null)
+    }
+  }
+
+  const handleNotifClick = (item: PendingProof) => {
+    setNotifOpen(false)
+    navigate('/admin/kas', { state: { search: item.member_name, status: 'pending' } })
+  }
 
   const visibleGroups = groups.filter((group) => user && group.roles.includes(user.role))
 
@@ -152,6 +208,46 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                   >
                     <item.icon className="h-4 w-4" />
                     {item.label}
+                    {item.to === '/admin/kas' && pendingCount > 0 ? (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          navigate('/admin/kas', { state: { status: 'pending' } })
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            navigate('/admin/kas', { state: { status: 'pending' } })
+                          }
+                        }}
+                        className="group relative ml-auto flex h-5 min-w-5 cursor-pointer items-center justify-center rounded-full bg-brand px-1.5 text-[10px] font-bold text-white"
+                      >
+                        {pendingCount}
+                        <span className="pointer-events-none absolute right-0 top-6 z-50 hidden w-64 rounded-xl border border-line bg-card p-3 text-xs font-normal text-content shadow-xl group-hover:block">
+                          <span className="mb-1 block font-semibold text-content">Pending Verifikasi:</span>
+                          {pendingList.slice(0, 5).map((p) => (
+                            <button
+                              key={p.payment_id}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                navigate('/admin/kas', { state: { search: p.member_name, status: 'pending' } })
+                              }}
+                              className="block w-full truncate rounded px-1 py-0.5 text-left text-muted hover:bg-elevated hover:text-content"
+                            >
+                              {p.member_name} - {p.period_name ?? '-'}
+                            </button>
+                          ))}
+                          {pendingList.length > 5 ? (
+                            <span className="block text-muted">+{pendingList.length - 5} lainnya</span>
+                          ) : null}
+                        </span>
+                      </span>
+                    ) : null}
                   </NavLink>
                 ))}
               </div>
@@ -189,6 +285,93 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
             <div className="flex items-center gap-3">
               <ThemeToggle />
+              {user ? (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setNotifOpen(!notifOpen)}
+                    className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-line text-muted transition hover:border-brand hover:text-brand"
+                    aria-label="Notifikasi"
+                  >
+                    <Bell className="h-4 w-4" />
+                    {pendingCount > 0 ? (
+                      <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white">
+                        {pendingCount}
+                      </span>
+                    ) : null}
+                  </button>
+                  {notifOpen ? (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                      <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-line bg-card p-4 shadow-xl">
+                        <h3 className="font-display text-sm font-semibold text-content">Notifikasi Pending</h3>
+                        <p className="mt-0.5 text-xs text-muted">Bukti pembayaran mahasiswa yang menunggu verifikasi</p>
+                        <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
+                          {pendingList.length === 0 ? (
+                            <p className="py-4 text-center text-xs text-muted">Tidak ada notifikasi baru</p>
+                          ) : (
+                            pendingList.map((item) => (
+                              <div
+                                key={item.payment_id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => handleNotifClick(item)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault()
+                                    handleNotifClick(item)
+                                  }
+                                }}
+                                className="block w-full cursor-pointer rounded-xl border border-line bg-elevated p-3 text-left transition hover:border-brand"
+                              >
+                                <p className="truncate text-sm font-medium text-content">{item.member_name}</p>
+                                <p className="font-mono text-[10px] text-muted">{item.nrp} · {item.class ?? '-'}</p>
+                                <p className="mt-0.5 text-[10px] text-muted">{item.period_name ?? '-'}</p>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      window.open(item.receipt_url, '_blank', 'noopener,noreferrer')
+                                    }}
+                                    className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-0.5 text-[10px] font-medium text-muted transition hover:border-brand hover:text-brand"
+                                  >
+                                    <Images className="h-3 w-3" />
+                                    Lihat Bukti
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleVerify(item.payment_id)
+                                    }}
+                                    disabled={verifyingId === item.payment_id}
+                                    className="inline-flex items-center rounded-md bg-brand px-2 py-0.5 text-[10px] font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+                                  >
+                                    {verifyingId === item.payment_id ? '...' : 'Verifikasi'}
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        {pendingList.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNotifOpen(false)
+                              navigate('/admin/kas')
+                            }}
+                            className="mt-3 w-full rounded-xl border border-line py-2 text-xs font-medium text-muted transition hover:border-brand hover:text-brand"
+                          >
+                            Lihat Semua di Kas
+                          </button>
+                        ) : null}
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
               {user ? (
                 <div className="hidden items-center gap-3 sm:flex">
                   <div className="text-right">

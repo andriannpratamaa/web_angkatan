@@ -1,6 +1,6 @@
 import api from '../lib/api'
 import { buildFormData } from '../lib/formData'
-import type { PortalCash, StudentLoginResponse, StudentMember, SnapTokenResponse, PaymentStatusResponse } from '../lib/types'
+import type { PortalCash, StudentLoginResponse, StudentMember } from '../lib/types'
 
 export interface StudentProfilePayload {
   name: string
@@ -45,16 +45,12 @@ export const studentService = {
     const { data } = await api.get<{ data: PortalCash }>('/portal/cash', { params })
     return data.data
   },
-  createPayment: async (periodId: number): Promise<SnapTokenResponse> => {
-    const { data } = await api.post<{ data: SnapTokenResponse }>(`/portal/cash/${periodId}/pay`)
-    return data.data
-  },
-  checkPaymentStatus: async (periodId: number): Promise<PaymentStatusResponse> => {
-    const { data } = await api.get<{ data: PaymentStatusResponse }>(`/portal/cash/${periodId}/status`)
-    return data.data
-  },
-  cancelPayment: async (periodId: number): Promise<{ message: string; data: { tagihan_id: number; status: string } }> => {
-    const { data } = await api.post(`/portal/cash/${periodId}/cancel`)
+  uploadProof: async (periodId: number, file: File) => {
+    const form = buildFormData({}, { proof_file: file })
+    const { data } = await api.post<{
+      message: string
+      data: { payment_id: number; status: string; receipt_url: string }
+    }>(`/portal/cash/${periodId}/pay`, form)
     return data
   },
 }

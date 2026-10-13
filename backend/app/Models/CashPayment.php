@@ -19,6 +19,8 @@ class CashPayment extends Model
         'amount',
         'payment_date',
         'status',
+        'payment_method',
+        'reference',
         'notes',
         'receipt_url',
         'receipt_public_id',

@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
   CheckCircle2,
+  Eye,
   Wallet,
   RotateCcw,
 } from 'lucide-react'
@@ -37,6 +38,9 @@ export default function AdminKasDetailPage() {
   const [editingRow, setEditingRow] = useState<MemberStatusRow | null>(null)
   const [editStatus, setEditStatus] = useState<'paid' | 'unpaid'>('paid')
   const [editLoading, setEditLoading] = useState(false)
+
+  // Proof viewer state
+  const [proofRow, setProofRow] = useState<MemberStatusRow | null>(null)
 
   useEffect(() => {
     cashService.periods()
@@ -159,26 +163,66 @@ export default function AdminKasDetailPage() {
                 <td className="px-4 py-3"><LightStatusBadge status={row.status === 'paid' ? 'Lunas' : 'Belum Bayar'} /></td>
                 <td className="px-4 py-3 text-muted">{row.payment_date ? formatDate(row.payment_date) : '-'}</td>
                 <td className="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleEditClick(row)}
-                    className="btn-primary btn-sm"
-                  >
-                    {row.status === 'paid' ? (
-                      <>
-                        <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Batalkan Bayar
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Tandai Lunas
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center justify-end gap-2">
+                    {row.status === 'paid' && row.receipt_url ? (
+                      <button
+                        type="button"
+                        onClick={() => setProofRow(row)}
+                        className="btn-ghost btn-sm"
+                      >
+                        <Eye className="h-3.5 w-3.5 mr-1.5" /> Bukti
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handleEditClick(row)}
+                      className="btn-primary btn-sm"
+                    >
+                      {row.status === 'paid' ? (
+                        <>
+                          <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Batalkan Bayar
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Tandai Lunas
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+    )
+  }
+
+  if (proofRow && proofRow.receipt_url) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setProofRow(null)}>
+        <div className="card max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+          <h3 className="font-display text-lg font-semibold text-content">Bukti Pembayaran</h3>
+          <p className="mt-1 text-sm text-muted">
+            {proofRow.name} (NRP: {proofRow.nrp}) - Periode: {activePeriod?.name ?? '-'}
+          </p>
+          <div className="mt-4 flex justify-center rounded-xl border border-line bg-elevated p-4">
+            <img
+              src={proofRow.receipt_url!}
+              alt="Bukti Pembayaran"
+              className="max-h-[60vh] max-w-full rounded-lg object-contain"
+            />
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setProofRow(null)}
+              className="btn-outline-light"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
       </div>
     )
   }

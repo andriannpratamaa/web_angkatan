@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import {
   CalendarClock,
   CheckCircle2,
+  Eye,
+  FileSpreadsheet,
   Pencil,
   Plus,
   Receipt,
@@ -17,6 +19,8 @@ import { classService } from '../../services/classService'
 import { memberService } from '../../services/memberService'
 import { usePagination } from '../../hooks/usePagination'
 import { getErrorMessage } from '../../lib/api'
+import { exportClassPaymentsToExcel } from '../../lib/excel'
+import type { ExcelMember } from '../../lib/excel'
 import type {
   CashOverview,
   CashPeriod,
@@ -48,8 +52,12 @@ const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
 ]
 
 export default function AdminKasPage() {
+  const location = useLocation()
   const [params, setParams] = useSearchParams()
-  const [tab, setTab] = useState<Tab>('overview')
+  const [tab, setTab] = useState<Tab>(() => {
+    const state = location.state as { search?: string; status?: string } | null
+    return state?.search || state?.status ? 'pembayaran' : 'overview'
+  })
   const [classes, setClasses] = useState<StudentClass[]>([])
   const [periods, setPeriods] = useState<CashPeriod[]>([])
 
@@ -60,6 +68,7 @@ export default function AdminKasPage() {
 
   useEffect(loadMeta, [loadMeta])
 
+  const notifState = location.state as { search?: string; status?: string } | null
   const initialClass = params.get('class') ?? 'all'
   const [classFilter, setClassFilter] = useState(initialClass)
 
@@ -92,7 +101,14 @@ export default function AdminKasPage() {
 
       {tab === 'overview' ? <OverviewTab classes={classes} onPickClass={goToPayments} /> : null}
       {tab === 'pembayaran' ? (
-        <PaymentTab classes={classes} periods={periods} classFilter={classFilter} setClassFilter={setClassFilter} />
+        <PaymentTab
+          classes={classes}
+          periods={periods}
+          classFilter={classFilter}
+          setClassFilter={setClassFilter}
+          initialSearch={notifState?.search}
+          initialStatus={notifState?.status}
+        />
       ) : null}
       {tab === 'transaksi' ? <TransactionTab /> : null}
       {tab === 'periode' ? <PeriodTab periods={periods} reload={loadMeta} /> : null}
@@ -114,6 +130,49 @@ function OverviewTab({ classes, onPickClass }: { classes: StudentClass[]; onPick
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false))
   }, [])
+
+  const toast = useToast()
+  const [exportingId, setExportingId] = useState<number | null>(null)
+
+  const handleExport = async (cls: ClassBreakdown) => {
+    setExportingId(cls.id)
+    try {
+      const periods = [...(await cashService.periods())].sort(
+        (a, b) => a.year - b.year || a.month - b.month,
+      )
+      const responses = await Promise.all(
+        periods.map((period) =>
+          cashService.adminPayments({ class_id: cls.id, period_id: period.id }),
+        ),
+      )
+      const memberMap = new Map<number, ExcelMember>()
+      periods.forEach((period, index) => {
+        responses[index].data.forEach((row) => {
+          let entry = memberMap.get(row.member_id)
+          if (!entry) {
+            entry = { nrp: row.nrp, name: row.name, payments: {} }
+            memberMap.set(row.member_id, entry)
+          }
+          entry.payments[period.id] = row.status === 'paid' ? row.amount : 0
+        })
+      })
+      const members = Array.from(memberMap.values()).sort((a, b) => a.nrp.localeCompare(b.nrp))
+      if (!members.length) {
+        toast.error('Tidak ada data mahasiswa untuk kelas ini.')
+        return
+      }
+      exportClassPaymentsToExcel({
+        className: cls.label,
+        periods: periods.map((period) => ({ id: period.id, label: monthName(period.month) })),
+        members,
+      })
+      toast.success(`Export kelas ${cls.label} berhasil diunduh.`)
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    } finally {
+      setExportingId(null)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -160,9 +219,20 @@ function OverviewTab({ classes, onPickClass }: { classes: StudentClass[]; onPick
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-content">{formatRupiah(item.total_amount)}</td>
                   <td className="px-4 py-3 text-right">
-                    <button type="button" onClick={() => onPickClass(item.id)} className="btn-outline-light btn-sm">
-                      Detail
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={() => onPickClass(item.id)} className="btn-outline-light btn-sm">
+                        Detail
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleExport(item)}
+                        disabled={exportingId === item.id}
+                        className="btn-outline-light btn-sm"
+                      >
+                        <FileSpreadsheet className="h-3.5 w-3.5" />
+                        {exportingId === item.id ? 'Menyiapkan...' : 'Export'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -195,17 +265,21 @@ function PaymentTab({
   periods,
   classFilter,
   setClassFilter,
+  initialSearch,
+  initialStatus,
 }: {
   classes: StudentClass[]
   periods: CashPeriod[]
   classFilter: string
   setClassFilter: (value: string) => void
+  initialSearch?: string
+  initialStatus?: string
 }) {
   const toast = useToast()
   const [members, setMembers] = useState<Member[]>([])
   const [periodId, setPeriodId] = useState(periods.find((p) => p.is_active)?.id ? String(periods.find((p) => p.is_active)!.id) : String(periods[0]?.id ?? ''))
-  const [status, setStatus] = useState('')
-  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState(initialStatus ?? '')
+  const [search, setSearch] = useState(initialSearch ?? '')
   const [rows, setRows] = useState<MemberStatusRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -216,6 +290,9 @@ function PaymentTab({
 
   const [formOpen, setFormOpen] = useState(false)
   const [editingRow, setEditingRow] = useState<MemberStatusRow | null>(null)
+  const [proofRow, setProofRow] = useState<MemberStatusRow | null>(null)
+  const [approveRow, setApproveRow] = useState<MemberStatusRow | null>(null)
+  const [approveLoading, setApproveLoading] = useState(false)
   const [formMemberId, setFormMemberId] = useState<number | null>(null)
   const [formAmount, setFormAmount] = useState('')
   const [formStatus, setFormStatus] = useState<'paid' | 'unpaid'>('paid')
@@ -369,6 +446,7 @@ function PaymentTab({
         <Select value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">Semua Status</option>
           <option value="paid">Lunas</option>
+          <option value="pending">Pending</option>
           <option value="unpaid">Belum Bayar</option>
         </Select>
         <SearchInput value={search} onChange={setSearch} placeholder="Cari mahasiswa..." tone="light" />
@@ -442,9 +520,20 @@ function PaymentTab({
                     <td className="px-4 py-3 text-muted">{row.payment_date ? formatDate(row.payment_date) : '-'}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => openForm(row)} className="btn-outline-light btn-sm">
-                          <Pencil className="h-3.5 w-3.5" /> {row.payment_id ? 'Edit' : 'Bayar'}
-                        </button>
+                        {row.status === 'unpaid' && row.receipt_url ? (
+                          <>
+                            <button type="button" onClick={() => setProofRow(row)} className="btn-ghost btn-sm">
+                              <Eye className="h-3.5 w-3.5" /> Bukti
+                            </button>
+                            <button type="button" onClick={() => setApproveRow(row)} className="btn-primary btn-sm">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Verifikasi
+                            </button>
+                          </>
+                        ) : (
+                          <button type="button" onClick={() => openForm(row)} className="btn-outline-light btn-sm">
+                            <Pencil className="h-3.5 w-3.5" /> {row.payment_id ? 'Edit' : 'Bayar'}
+                          </button>
+                        )}
                         {row.payment_id ? (
                           <button type="button" onClick={() => setDeleting(row)} className="btn-danger btn-sm">
                             <Trash2 className="h-3.5 w-3.5" />
@@ -463,6 +552,76 @@ function PaymentTab({
           </>
         )}
       </div>
+
+      {proofRow && proofRow.receipt_url ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setProofRow(null)}>
+          <div className="card max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-lg font-semibold text-content">Bukti Pembayaran</h3>
+            <p className="mt-1 text-sm text-muted">
+              {proofRow.name} (NRP: {proofRow.nrp}) - {proofRow.class}
+            </p>
+            <div className="mt-4 flex justify-center rounded-xl border border-line bg-elevated p-4">
+              <img
+                src={proofRow.receipt_url}
+                alt="Bukti Pembayaran"
+                className="max-h-[60vh] max-w-full rounded-lg object-contain"
+              />
+            </div>
+            <div className="mt-4 flex justify-end gap-3">
+              <button type="button" onClick={() => setProofRow(null)} className="btn-outline-light">
+                Tutup
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setApproveRow(proofRow)
+                  setProofRow(null)
+                }}
+                className="btn-primary"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Verifikasi
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <Modal open={Boolean(approveRow)} onClose={() => setApproveRow(null)} title="Verifikasi Pembayaran" theme="light" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Verifikasi pembayaran untuk <strong className="text-content">{approveRow?.name}</strong> (NRP: {approveRow?.nrp})?
+          </p>
+          <p className="text-sm text-muted">
+            Status akan diubah menjadi <span className="font-semibold text-emerald-600">LUNAS</span>.
+          </p>
+          <div className="mt-6 flex justify-end gap-3">
+            <button type="button" onClick={() => setApproveRow(null)} className="btn-outline-light">
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!approveRow?.payment_id) return
+                setApproveLoading(true)
+                try {
+                  await cashService.updatePaymentStatus(approveRow.payment_id, 'paid')
+                  toast.success(`Pembayaran ${approveRow.name} diverifikasi.`)
+                  setApproveRow(null)
+                  load()
+                } catch (err) {
+                  toast.error(getErrorMessage(err))
+                } finally {
+                  setApproveLoading(false)
+                }
+              }}
+              disabled={approveLoading}
+              className="btn-primary"
+            >
+              {approveLoading ? 'Memproses...' : 'Verifikasi'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={bulkOpen} onClose={() => setBulkOpen(false)} title="Tandai Pembayaran" description={`${selected.length} mahasiswa dipilih`} theme="light" size="sm">
         <div className="grid gap-4">

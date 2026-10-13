@@ -73,6 +73,26 @@ export const cashService = {
     })
     return data.data
   },
+  pendingProofs: async () => {
+    const { data } = await api.get<{ data: { count: number } }>('/admin/cash/pending-proofs')
+    return data
+  },
+  pendingProofsList: async () => {
+    const { data } = await api.get<{
+      data: {
+        payment_id: number
+        member_id: number
+        member_name: string
+        nrp: string
+        class: string | null
+        period_name: string | null
+        amount: number
+        receipt_url: string
+        uploaded_at: string
+      }[]
+    }>('/admin/cash/pending-proofs/list')
+    return data
+  },
   adminPayments: async (params: Record<string, unknown> = {}) => {
     const { data } = await api.get<{ data: MemberStatusRow[]; meta: Record<string, number> }>(
       '/admin/cash/payments',

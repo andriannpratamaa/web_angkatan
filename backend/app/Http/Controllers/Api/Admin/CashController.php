@@ -15,4 +15,20 @@ class CashController extends Controller
             'data' => $cash->overview($request->integer('period_id') ?: null),
         ]);
     }
+
+    public function pendingProofs(CashService $cash): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'count' => $cash->pendingProofsCount(),
+            ],
+        ]);
+    }
+
+    public function pendingProofsList(CashService $cash): JsonResponse
+    {
+        return response()->json([
+            'data' => $cash->pendingProofsList(),
+        ]);
+    }
 }

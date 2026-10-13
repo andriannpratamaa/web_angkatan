@@ -104,6 +104,7 @@ export interface MemberStatusRow {
   status_label: string
   amount: number
   payment_date: string | null
+  receipt_url: string | null
   notes: string | null
   period: string | null
 }
@@ -309,6 +310,7 @@ export interface PortalPeriod {
   status_label: string
   payment_date: string | null
   payment_method: string | null
+  receipt_url: string | null
 }
 
 export interface PortalCashPagination {
@@ -330,22 +332,11 @@ export interface PortalCash {
   }
 }
 
-export interface SnapTokenResponse {
-  order_id: string
-  snap_token: string
-  snap_url: string
-  client_key: string
-  gross_amount: number
-  period_name: string
-}
-
-export interface PaymentStatusResponse {
-  tagihan_id: number
-  period_name: string
-  amount: number
-  status: 'paid' | 'unpaid' | 'pending'
-  payment_status: 'paid' | 'unpaid' | 'pending' | 'failed'
-  paid_at: string | null
-  snap_token: string | null
-  order_id: string | null
+export interface UploadProofResponse {
+  message: string
+  data: {
+    payment_id: number
+    status: string
+    receipt_url: string
+  }
 }

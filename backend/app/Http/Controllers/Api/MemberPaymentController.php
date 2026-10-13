@@ -5,218 +5,68 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CashPayment;
 use App\Models\CashPeriod;
-use App\Models\PaymentTransaction;
-use App\Services\MidtransService;
+use App\Services\CloudinaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class MemberPaymentController extends Controller
 {
     public function __construct(
-        protected MidtransService $midtrans
+        protected CloudinaryService $cloudinary
     ) {}
 
-    /**
-     * Create Midtrans Snap transaction for a bill
-     */
-    public function createTransaction(Request $request, int $periodId): JsonResponse
+    public function uploadProof(Request $request, int $periodId): JsonResponse
     {
-        $member = $request->user();
+        $request->validate([
+            'proof_file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+        ]);
 
+        $member = $request->user();
         $period = CashPeriod::findOrFail($periodId);
 
-        // Verify bill belongs to this member (check if member has this period available)
         $cashPayment = CashPayment::where('member_id', $member->id)
             ->where('cash_period_id', $periodId)
             ->first();
 
-        // If no CashPayment record exists, check if period is valid for this member
-        // (All active members should have bills for all periods)
-        if (! $cashPayment) {
-            // Create unpaid cash_payment record if not exists
-            $cashPayment = CashPayment::create([
-                'member_id' => $member->id,
-                'cash_period_id' => $periodId,
-                'amount' => $period->amount,
-                'status' => CashPayment::STATUS_UNPAID,
-            ]);
-        }
-
-        // Check if already paid
-        if ($cashPayment->status === CashPayment::STATUS_PAID) {
+        if ($cashPayment && $cashPayment->status === CashPayment::STATUS_PAID) {
             return response()->json([
                 'message' => 'Tagihan sudah lunas.',
             ], 422);
         }
 
-        try {
-            // Get or create payment transaction
-            $transaction = $this->midtrans->getOrCreateTransaction($member, $period);
+        $file = $request->file('proof_file');
+        $upload = $this->cloudinary->upload($file, config('cloudinary.folders.receipts'), 'auto');
 
-            // Create Snap token
-            $snapResult = $this->midtrans->createSnapToken($member, $period, $transaction);
-
-            // Update transaction with snap token if new
-            if (! $transaction->snap_token || $transaction->order_id !== $snapResult['order_id']) {
-                $transaction->update([
-                    'order_id' => $snapResult['order_id'],
-                    'snap_token' => $snapResult['snap_token'],
-                    'gross_amount' => $period->amount,
-                ]);
+        if ($cashPayment) {
+            if ($cashPayment->receipt_public_id) {
+                $this->cloudinary->destroy($cashPayment->receipt_public_id, 'image');
             }
-
-            return response()->json([
-                'message' => 'Transaksi berhasil dibuat.',
-                'data' => [
-                    'order_id' => $snapResult['order_id'],
-                    'snap_token' => $snapResult['snap_token'],
-                    'snap_url' => $this->midtrans->getSnapUrl(),
-                    'client_key' => $this->midtrans->getClientKey(),
-                    'gross_amount' => $period->amount,
-                    'period_name' => $period->name,
-                ],
+            $cashPayment->update([
+                'receipt_url' => $upload['url'],
+                'receipt_public_id' => $upload['public_id'],
+                'payment_method' => 'qris',
+                'status' => CashPayment::STATUS_UNPAID,
+                'notes' => 'Menunggu verifikasi admin',
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Gagal membuat transaksi: ' . $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Check payment status for a bill (for polling)
-     */
-    public function checkStatus(Request $request, int $periodId): JsonResponse
-    {
-        $member = $request->user();
-
-        $period = CashPeriod::findOrFail($periodId);
-
-        $cashPayment = CashPayment::where('member_id', $member->id)
-            ->where('cash_period_id', $periodId)
-            ->first();
-
-        $transaction = PaymentTransaction::where('mahasiswa_id', $member->id)
-            ->where('tagihan_id', $periodId)
-            ->latest()
-            ->first();
-
-        $status = 'unpaid';
-        $paymentStatus = 'unpaid';
-        $paidAt = null;
-
-        if ($cashPayment && $cashPayment->status === CashPayment::STATUS_PAID) {
-            $status = 'paid';
-            $paymentStatus = 'paid';
-            $paidAt = $cashPayment->payment_date?->format('Y-m-d H:i:s');
-        } elseif ($transaction) {
-            // If transaction is pending, verify with Midtrans API directly
-            if ($transaction->isPending() && $transaction->order_id) {
-                $verification = $this->midtrans->verifyNotification($transaction->order_id);
-                if ($verification) {
-                    $mapped = $this->midtrans->mapStatus($verification);
-                    
-                    // Update transaction with latest status
-                    $transaction->update([
-                        'transaction_id' => $mapped['transaction_id'] ?? $transaction->transaction_id,
-                        'payment_type' => $mapped['payment_type'] ?? $transaction->payment_type,
-                        'transaction_status' => $mapped['transaction_status'],
-                        'fraud_status' => $mapped['fraud_status'] ?? $transaction->fraud_status,
-                        'paid_at' => $mapped['paid_at'] ?? $transaction->paid_at,
-                    ]);
-
-                    // If paid, update cash_payment
-                    if ($mapped['is_paid']) {
-                        if ($cashPayment) {
-                            $cashPayment->update([
-                                'status' => CashPayment::STATUS_PAID,
-                                'payment_date' => $mapped['paid_at'] ?? now(),
-                                'payment_method' => $mapped['payment_type'] ?? 'midtrans',
-                                'notes' => 'Dibayar via Midtrans: ' . ($verification['payment_type'] ?? 'unknown'),
-                            ]);
-                        } else {
-                            CashPayment::create([
-                                'member_id' => $member->id,
-                                'cash_period_id' => $periodId,
-                                'amount' => $period->amount,
-                                'status' => CashPayment::STATUS_PAID,
-                                'payment_date' => $mapped['paid_at'] ?? now(),
-                                'payment_method' => $mapped['payment_type'] ?? 'midtrans',
-                                'notes' => 'Dibayar via Midtrans: ' . ($verification['payment_type'] ?? 'unknown'),
-                            ]);
-                        }
-                        $status = 'paid';
-                        $paymentStatus = 'paid';
-                        $paidAt = $mapped['paid_at'] ?? now()->format('Y-m-d H:i:s');
-                    } elseif ($mapped['transaction_status'] === 'pending') {
-                        $status = 'pending';
-                        $paymentStatus = 'pending';
-                    } else {
-                        $status = 'unpaid';
-                        $paymentStatus = 'failed';
-                    }
-                } else {
-                    $status = 'pending';
-                    $paymentStatus = 'pending';
-                }
-            } elseif ($transaction->isPaid()) {
-                $status = 'paid';
-                $paymentStatus = 'paid';
-                $paidAt = $transaction->paid_at?->format('Y-m-d H:i:s');
-            } elseif ($transaction->isPending()) {
-                $status = 'pending';
-                $paymentStatus = 'pending';
-            } elseif ($transaction->isFailed()) {
-                $status = 'unpaid';
-                $paymentStatus = 'failed';
-            }
-        }
-
-        return response()->json([
-            'data' => [
-                'tagihan_id' => $periodId,
-                'period_name' => $period->name,
+        } else {
+            $cashPayment = CashPayment::create([
+                'member_id' => $member->id,
+                'cash_period_id' => $periodId,
                 'amount' => $period->amount,
-                'status' => $status,
-                'payment_status' => $paymentStatus,
-                'paid_at' => $paidAt,
-                'snap_token' => $transaction?->snap_token,
-                'order_id' => $transaction?->order_id,
-            ],
-        ]);
-    }
-
-    /**
-     * Cancel a pending payment transaction
-     */
-    public function cancelTransaction(Request $request, int $periodId): JsonResponse
-    {
-        $member = $request->user();
-
-        $period = CashPeriod::findOrFail($periodId);
-
-        $transaction = PaymentTransaction::where('mahasiswa_id', $member->id)
-            ->where('tagihan_id', $periodId)
-            ->where('transaction_status', 'pending')
-            ->latest()
-            ->first();
-
-        if (! $transaction) {
-            return response()->json([
-                'message' => 'Tidak ada transaksi pending untuk dibatalkan.',
-            ], 422);
+                'status' => CashPayment::STATUS_UNPAID,
+                'payment_method' => 'qris',
+                'receipt_url' => $upload['url'],
+                'receipt_public_id' => $upload['public_id'],
+                'notes' => 'Menunggu verifikasi admin',
+            ]);
         }
 
-        // Update transaction status to cancelled
-        $transaction->update([
-            'transaction_status' => 'cancel',
-        ]);
-
         return response()->json([
-            'message' => 'Transaksi berhasil dibatalkan.',
+            'message' => 'Bukti pembayaran berhasil diunggah. Menunggu verifikasi admin.',
             'data' => [
-                'tagihan_id' => $periodId,
+                'payment_id' => $cashPayment->id,
                 'status' => 'unpaid',
+                'receipt_url' => $upload['url'],
             ],
         ]);
     }
