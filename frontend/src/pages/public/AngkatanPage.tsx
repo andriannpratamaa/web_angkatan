@@ -99,7 +99,7 @@ export default function AngkatanPage() {
                       <div className="relative transform-gpu transition-transform hover:scale-[1.02]">
                         <div className="absolute -inset-[2px] z-0 rounded-2xl bg-gradient-to-br from-yellow-400 via-brand to-pink-500 opacity-90 blur-md animate-pulse" />
                         <div className="absolute left-4 top-4 z-20 rounded-full bg-gradient-to-r from-yellow-400 to-brand px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-white shadow-2xl ring-2 ring-white/30">
-                          • DEVELOPMENT •
+                          • DEVELOPER •
                         </div>
                         <div className="relative z-10">
                           <MemberCard member={member} to={`/angkatan/${member.slug}`} />
